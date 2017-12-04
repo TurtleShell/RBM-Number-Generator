@@ -4,14 +4,10 @@ import sys
 import numpy as np
 import math
 from MNISTLoader import *
-from Features import *
-from ClassifyMNISTVector import *
-from WeightGroups import *
-from AssertReport import *
+from HelperFunctions import *
 
 
 class RBM(object):
-	"""docstring for RBM"""
 	def __init__(self, visD, hidD, weightRange, groupWeights):
 		self.visD = visD
 		self.hidD = hidD
@@ -22,21 +18,12 @@ class RBM(object):
 		lowerbound = -valueRange/2
 		upperbound = valueRange/2
 
-		if(groupWeights):
-			weightGroups = WeightGroups(self.visD, 28, self.hidD, 2)
-			weightMatrix = weightGroups.generateWGMatrix()
-		else:
-			weightMatrix = np.random.uniform(lowerbound, upperbound, (self.hidD, self.visD))
+		weightMatrix = np.random.uniform(lowerbound, upperbound, (self.hidD, self.visD))
 
-			weightMatrixReg = np.random.randint(0, 2, (self.hidD, self.visD))
-			weightMatrix = weightMatrix * weightMatrixReg
-			weightMatrixReg = np.random.randint(0, 2, (self.hidD, self.visD))
-			weightMatrix = weightMatrix * weightMatrixReg
-			
-			#vectorizedSetZeros = np.vectorize(setZeros)
-			#weightMatrix = vectorizedSetZeros(weightMatrix)
-			
-
+		weightMatrixReg = np.random.randint(0, 2, (self.hidD, self.visD))
+		weightMatrix = weightMatrix * weightMatrixReg
+		weightMatrixReg = np.random.randint(0, 2, (self.hidD, self.visD))
+		weightMatrix = weightMatrix * weightMatrixReg
 
 		self.weightMatrix = weightMatrix
 		self.weightMatrixShape = np.shape(weightMatrix)
@@ -55,19 +42,13 @@ class RBM(object):
 
 
 	def generateVisStates(self, hidStates):
-
-		#print(self.weightMatrix)
-		#print(hidStates)
-
 		weightMatrixT = np.transpose(self.weightMatrix).astype(np.float32)
 		hidStates = hidStates.astype(np.float32)
 		visSignalMatrix = np.dot(weightMatrixT, hidStates)
-		#print(visSignalMatrix)
 
 		vectorizedLogistic = np.vectorize(logistic)
 
 		result = vectorizedLogistic(visSignalMatrix)
-		#print(result)
 		return result
 
 	#Inputs should be actual visStates, and hidStates generated from those
@@ -77,14 +58,9 @@ class RBM(object):
 
 		assert(samples == np.shape(hidStates)[1])
 
-		#print(np.shape(hidStates))
-		#print(np.shape(visStates))
-
 		hidStates = hidStates.astype(np.float32)
 		visStatesT = np.transpose(visStates).astype(np.float32)
 		weightTotals = np.dot(hidStates, visStatesT)
-
-		#print("weightTotals", np.shape(weightTotals))
 
 		result = weightTotals/samples
 
@@ -117,7 +93,7 @@ class RBM(object):
 
 		visStatesShape = np.shape(visStates)
 
-		assert_report(visStatesShape[0], self.visD, "Dimension of input doesn't match rbm vis dimension")
+		assert(visStatesShape[0] == self.visD)
 		samples = visStatesShape[1]
 
 
@@ -143,7 +119,6 @@ class RBM(object):
 			currNegHidStates = self.settleOnStates(currNegHidStates)
 
 
-		#negGrad = self.calculateGrad(negVisStates, negHidStates)
 		negGrad = self.calculateGrad(currNegVisStates, currNegHidStates)
 
 		finalGrad = posGrad - negGrad
@@ -159,15 +134,12 @@ class RBM(object):
 		cd = 1
 
 		for i in range(iterations):
-			#print("Iteration:", i)	
 			printProgress(i*100/iterations)		
 			for batchi in range(int(inputCases/batchSize)):
 				if (i > iterations/2):
 					cd = 5
 
-				#print(inputMatrix[0])
 				batch = inputMatrix[:, batchSize*batchi:(batchSize*batchi)+batchSize]
-				#print(batch)
 				self.updateWeights(batch, lr, cd)
 
 		print()
@@ -199,8 +171,6 @@ def loadNet(fileName):
 	network = pickle.load(f)
 	f.close()
 	return network
-
-
 
 
 
@@ -245,31 +215,8 @@ def printProgress(percentComplete):
 
 def main():
 
-	#np.random.seed(2)
-
-	#iterations = 30
-#
-	#hidUnits = 400
-	#lr = .1
-	#weightRange = .12
-#
-	#trainSubset = 800
-	#validSusbet = 20
-	#testSubset = 0
-
-	#iterations = 6
-	#
-	#hidUnits = 1400
-	#lr = .075
-	#weightRange = .8
-	#cd = 1
-	#
-	#trainSubset = 20000
-	#validSusbet = 20
-	#testSubset = 0
 
 	load_last_network = sys.argv[1]
-
 
 
 	iterations = 3
@@ -301,35 +248,21 @@ def main():
 
 		rbm.train(train_inputs, lr, iterations, batchSize)
 	
-		#for i in range(iterations):
-		#	print("Iteration:", i)			
-		#	for batchi in range(int(trainSubset/batchSize)):
-		#		#print("Batch:", batchi)
-		#		#if (i > iterations/2):
-		#		#	cd = 5
-		#		batchT = np.transpose(train_inputs)[batchSize*batchi:(batchSize*batchi)+batchSize]
-		#		batch = np.transpose(batchT)
-		#		rbm.updateWeights(batch, lr, cd)
 
-		rbm.saveNet("rbm.txt")
+		rbm.saveNet("rbm")
 
 	else:
-		rbm = loadNet("rbm.txt")
+		rbm = loadNet("rbm")
 
 	testIndex = int(sys.argv[2])
 
-	#testInput = validation_data[0][testIndex]
 	testInput = validation_data[0][:, testIndex]
 
 	testLabelVector = validation_data[1][testIndex]
-	#testLabel = outputVectorToLabel(testLabelVector)
 
 	printMNISTVector(testInput)
-	#print("TestLabel:", testLabelVector)
 
 	rbm.reconstructVisible(testInput)
-
-
 
 
 
